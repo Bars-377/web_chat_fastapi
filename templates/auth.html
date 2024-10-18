@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Авторизация</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+
+<div class="container">
+    <h1 class="text-center">Авторизация</h1>
+
+    <div class="form-group">
+        <input type="text" id="username" class="form-control" placeholder="Имя пользователя" required>
+    </div>
+    <div class="form-group">
+        <input type="password" id="password" class="form-control" placeholder="Пароль" required>
+    </div>
+    <button id="loginBtn" class="btn btn-primary btn-block">Войти</button>
+    <button id="registerBtn" class="btn btn-secondary btn-block">Регистрация</button>
+
+    <div id="loginMessage" class="text-danger mt-2"></div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<script>
+$(document).ready(function() {
+    $("#loginBtn").click(async function() {
+        const username = $("#username").val(); // Исправлено на #username
+        const password = $("#password").val(); // Исправлено на #password
+
+        const response = await fetch('/token/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+                username,
+                password
+            })
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            localStorage.setItem("access_token", data.access_token); // Сохраняем токен в localStorage
+            window.location.href = '/'; // Перенаправляем на index.html
+        } else {
+            const errorData = await response.json();
+            $("#loginMessage").text(errorData.detail || "Произошла ошибка.");
+        }
+    });
+
+    // Обработчик для кнопки регистрации
+    $("#registerBtn").click(function() {
+        window.location.href = 'reg.html'; // Перенаправление на страницу регистрации
+    });
+});
+</script>
+
+</body>
+</html>

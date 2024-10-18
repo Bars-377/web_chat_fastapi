@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Чат приложение</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+
+<div class="container">
+    <h1 class="text-center">Чат приложение</h1>
+
+    <div id="chat">
+        <h2>Чат</h2>
+        <div id="messages" class="border p-2"></div>
+        <input type="text" id="messageInput" class="form-control" placeholder="Ваше сообщение" required>
+        <button id="sendMessageBtn" class="btn btn-primary btn-block mt-2">Отправить</button>
+        <button id="logoutBtn" class="btn btn-danger btn-block mt-2">Выйти</button>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<script>
+    let userId;
+    let ws;
+
+    $(document).ready(function() {
+        const token = localStorage.getItem("access_token");
+        if (!token) {
+            window.location.href = '/auth.html'; // Перенаправление на auth.html, если токен отсутствует
+        } else {
+            // Получаем имя пользователя из токена
+            function getUsernameFromToken(token) {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                return payload.sub;
+            }
+
+            userId = getUsernameFromToken(token); // Извлечение имени пользователя из токена
+            console.log("Пользователь:", userId);
+
+            function openWebSocket(userId) {
+                ws = new WebSocket(`ws://172.18.88.41:8000/ws/${userId}`);
+
+                ws.onopen = function() {
+                    console.log("WebSocket connection opened.");
+                    const token = localStorage.getItem("access_token");
+                    console.log("Отправка токена:", token);
+                    ws.send(JSON.stringify({ token })); // отправляем токен
+                };
+
+                ws.onmessage = function(event) {
+                    console.log("Получено сообщение:", event.data);
+                    $("#messages").append(`<div>${event.data}</div>`);
+                };
+
+                ws.onerror = function(error) {
+                    console.error("WebSocket error: ", error);
+                };
+
+                ws.onclose = function() {
+                    console.log("WebSocket connection closed.");
+                };
+
+            }
+
+            openWebSocket(userId); // Открытие веб-сокета
+
+            // Функция для загрузки истории сообщений
+            function loadMessageHistory(token) {
+                $.ajax({
+                    url: `/history/`,  // Исправленный URL
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}` // Передача токена авторизации, если необходимо
+                    },
+                    success: function(messages) {
+                        if (messages.length > 0) {
+                            messages.forEach(function(message) {
+                                $("#messages").append(`<div><strong>${message.username}</strong>: ${message.content}</div>`);
+                            });
+                        } else {
+                            $("#messages").append(`<div>Нет сообщений.</div>`);
+                        }
+                    },
+                    error: function(error) {
+                        console.error("Error loading message history:", error);
+                    }
+                });
+            }
+
+            // Загружаем историю сообщений
+            loadMessageHistory(token);
+        }
+
+        // Обработчик для кнопки выхода
+        $("#logoutBtn").click(function() {
+            localStorage.removeItem("access_token"); // Удаляем токен
+            window.location.href = '/auth.html'; // Перенаправляем на страницу авторизации
+        });
+
+        $("#sendMessageBtn").click(function() {
+            const message = $("#messageInput").val().trim();
+            if (message === "") {
+                alert("Сообщение не может быть пустым!");
+                return;
+            }
+
+            if (ws.readyState === WebSocket.OPEN) {
+                console.log("Отправка сообщения:", message);
+                ws.send(message);
+                $("#messageInput").val('');
+            } else {
+                console.error("WebSocket is not open. Unable to send message.");
+            }
+        });
+
+    });
+
+</script>
+
+</body>
+</html>
